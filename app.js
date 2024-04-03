@@ -135,6 +135,7 @@ async function clearOldBackups() {
 async function saveInvoices(documents) {
   await Promise.all(
     documents.map(async (document) => {
+      console.log("downloading: " + document.pdf_link);
       await downloadFile(
         document.pdf_link,
         formatPath(PATH, "/invoices/" + document.number + ".PDF")
