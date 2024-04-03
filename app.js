@@ -12,8 +12,14 @@ const API_URL = process.env.SELLSY_API_URL;
 const LOGIN_URL = process.env.SELLSY_LOGIN_URL;
 const PATH = process.env.LOCAL_PATH;
 const MAXIMUM_HOLD_IN_DAYS = process.env.MAXIMUM_HOLD_IN_DAYS;
+const IS_SCHEDULED = process.env.IS_SCHEDULED;
+const SCHEDULE_PATTERN = process.env.SCHEDULE_PATTERN;
 
-const job = schedule.scheduleJob("0 0 0 * * *", backupSellsy);
+if (IS_SCHEDULED == "true") {
+  const job = schedule.scheduleJob(SCHEDULE_PATTERN, backupSellsy);
+} else {
+  backupSellsy();
+}
 
 async function backupSellsy() {
   const token = await getToken();
@@ -40,41 +46,63 @@ async function saveAll(
   subscriptions
 ) {
   // Saving JSON to files
-  Fs.writeFileSync(PATH + `/companies.json`, JSON.stringify(companies), {
-    overwrite: true,
-  });
-  Fs.writeFileSync(PATH + `/contacts.json`, JSON.stringify(contacts), {
-    overwrite: true,
-  });
-  Fs.writeFileSync(PATH + `/invoices.json`, JSON.stringify(invoices), {
-    overwrite: true,
-  });
-  Fs.writeFileSync(PATH + `/credit-notes.json`, JSON.stringify(creditNotes), {
-    overwrite: true,
-  });
   Fs.writeFileSync(
-    PATH + `/subscriptions.json`,
+    formatPath(PATH, `/companies.json`),
+    JSON.stringify(companies),
+    {
+      overwrite: true,
+    }
+  );
+  Fs.writeFileSync(
+    formatPath(PATH, `/contacts.json`),
+    JSON.stringify(contacts),
+    {
+      overwrite: true,
+    }
+  );
+  Fs.writeFileSync(
+    formatPath(PATH, `/invoices.json`),
+    JSON.stringify(invoices),
+    {
+      overwrite: true,
+    }
+  );
+  Fs.writeFileSync(
+    formatPath(PATH, `/credit-notes.json`),
+    JSON.stringify(creditNotes),
+    {
+      overwrite: true,
+    }
+  );
+  Fs.writeFileSync(
+    formatPath(PATH, `/subscriptions.json`),
     JSON.stringify(subscriptions),
     { overwrite: true }
   );
 
   //Retrieving stream from JSON files
-  companiesStream = Fs.createReadStream(PATH + `/companies.json`);
-  contactsStream = Fs.createReadStream(PATH + `/contacts.json`);
-  invoicesStream = Fs.createReadStream(PATH + `/invoices.json`);
-  creditNotesStream = Fs.createReadStream(PATH + `/credit-notes.json`);
-  subscriptionsStream = Fs.createReadStream(PATH + `/subscriptions.json`);
+  companiesStream = Fs.createReadStream(formatPath(PATH, `/companies.json`));
+  contactsStream = Fs.createReadStream(formatPath(PATH, `/contacts.json`));
+  invoicesStream = Fs.createReadStream(formatPath(PATH, `/invoices.json`));
+  creditNotesStream = Fs.createReadStream(
+    formatPath(PATH, `/credit-notes.json`)
+  );
+  subscriptionsStream = Fs.createReadStream(
+    formatPath(PATH, `/subscriptions.json`)
+  );
 
   // Creating the ZIP archive
-  const outputfile =
-    PATH + `/backups/sellsy-backup-${new Date().toJSON().slice(0, 10)}.zip`;
+  const outputfile = formatPath(
+    PATH,
+    `/backups/sellsy-backup-${new Date().toJSON().slice(0, 10)}.zip`
+  );
   const outputStream = Fs.createWriteStream(outputfile);
   const archive = archiver("zip", {
     zlib: { level: 9 },
   });
 
-  if (!Fs.existsSync(PATH + "/backups")) {
-    Fs.mkdirSync(PATH + "/backups");
+  if (!Fs.existsSync(formatPath(PATH, "/backups"))) {
+    Fs.mkdirSync(formatPath(PATH, "/backups"));
   }
 
   // Adding files to ZIP archive and write to disk
@@ -91,7 +119,7 @@ async function saveAll(
  * Method to clear zip files older than 30 days
  */
 async function clearOldBackups() {
-  findRemoveSync(PATH + "/backups", {
+  findRemoveSync(formatPath(PATH, "/backups"), {
     extensions: [".zip"],
     age: { seconds: MAXIMUM_HOLD_IN_DAYS * 24 * 60 * 60 },
   });
@@ -109,7 +137,7 @@ async function saveInvoices(documents) {
     documents.map(async (document) => {
       await downloadFile(
         document.pdf_link,
-        PATH + "/invoices/" + document.number + ".PDF"
+        formatPath(PATH, "/invoices/" + document.number + ".PDF")
       );
     })
   );
@@ -200,4 +228,14 @@ async function downloadFile(url, targetFile) {
       reject(error);
     });
   });
+}
+
+function formatPath(path, value) {
+  const isLinux = path.includes("/");
+
+  if (isLinux) {
+    return (path + value).replace("\\", "/");
+  } else {
+    return (path + value).replace("/", "\\");
+  }
 }
