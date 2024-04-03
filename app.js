@@ -3,11 +3,15 @@ const Fs = require("fs");
 const Https = require("https");
 const archiver = require("archiver");
 const findRemoveSync = require("find-remove");
+const dotenv = require("dotenv");
 
-const API_URL = "https://api.sellsy.com";
-const LOGIN_URL = "https://login.sellsy.com";
-const PATH = "C:\\Users\\Hubert COLE\\Desktop\\Devolut\\Dev\\SI Cloud";
-const MAXIMUM_HOLD_IN_DAYS = 30;
+// Load the environment variables from the .env file
+dotenv.config();
+
+const API_URL = process.env.SELLSY_API_URL;
+const LOGIN_URL = process.env.SELLSY_LOGIN_URL;
+const PATH = process.env.LOCAL_PATH;
+const MAXIMUM_HOLD_IN_DAYS = process.env.MAXIMUM_HOLD_IN_DAYS;
 
 const job = schedule.scheduleJob("0 0 0 * * *", backupSellsy);
 
@@ -36,41 +40,41 @@ async function saveAll(
   subscriptions
 ) {
   // Saving JSON to files
-  Fs.writeFileSync(PATH + `\\companies.json`, JSON.stringify(companies), {
+  Fs.writeFileSync(PATH + `/companies.json`, JSON.stringify(companies), {
     overwrite: true,
   });
-  Fs.writeFileSync(PATH + `\\contacts.json`, JSON.stringify(contacts), {
+  Fs.writeFileSync(PATH + `/contacts.json`, JSON.stringify(contacts), {
     overwrite: true,
   });
-  Fs.writeFileSync(PATH + `\\invoices.json`, JSON.stringify(invoices), {
+  Fs.writeFileSync(PATH + `/invoices.json`, JSON.stringify(invoices), {
     overwrite: true,
   });
-  Fs.writeFileSync(PATH + `\\credit-notes.json`, JSON.stringify(creditNotes), {
+  Fs.writeFileSync(PATH + `/credit-notes.json`, JSON.stringify(creditNotes), {
     overwrite: true,
   });
   Fs.writeFileSync(
-    PATH + `\\subscriptions.json`,
+    PATH + `/subscriptions.json`,
     JSON.stringify(subscriptions),
     { overwrite: true }
   );
 
   //Retrieving stream from JSON files
-  companiesStream = Fs.createReadStream(PATH + `\\companies.json`);
-  contactsStream = Fs.createReadStream(PATH + `\\contacts.json`);
-  invoicesStream = Fs.createReadStream(PATH + `\\invoices.json`);
-  creditNotesStream = Fs.createReadStream(PATH + `\\credit-notes.json`);
-  subscriptionsStream = Fs.createReadStream(PATH + `\\subscriptions.json`);
+  companiesStream = Fs.createReadStream(PATH + `/companies.json`);
+  contactsStream = Fs.createReadStream(PATH + `/contacts.json`);
+  invoicesStream = Fs.createReadStream(PATH + `/invoices.json`);
+  creditNotesStream = Fs.createReadStream(PATH + `/credit-notes.json`);
+  subscriptionsStream = Fs.createReadStream(PATH + `/subscriptions.json`);
 
   // Creating the ZIP archive
   const outputfile =
-    PATH + `\\backups\\sellsy-backup-${new Date().toJSON().slice(0, 10)}.zip`;
+    PATH + `/backups/sellsy-backup-${new Date().toJSON().slice(0, 10)}.zip`;
   const outputStream = Fs.createWriteStream(outputfile);
   const archive = archiver("zip", {
     zlib: { level: 9 },
   });
 
-  if (!Fs.existsSync(PATH + "\\backups")) {
-    Fs.mkdirSync(PATH + "\\backups");
+  if (!Fs.existsSync(PATH + "/backups")) {
+    Fs.mkdirSync(PATH + "/backups");
   }
 
   // Adding files to ZIP archive and write to disk
@@ -87,7 +91,7 @@ async function saveAll(
  * Method to clear zip files older than 30 days
  */
 async function clearOldBackups() {
-  findRemoveSync(PATH + "\\backups", {
+  findRemoveSync(PATH + "/backups", {
     extensions: [".zip"],
     age: { seconds: MAXIMUM_HOLD_IN_DAYS * 24 * 60 * 60 },
   });
@@ -105,7 +109,7 @@ async function saveInvoices(documents) {
     documents.map(async (document) => {
       await downloadFile(
         document.pdf_link,
-        PATH + "\\invoices\\" + document.number + ".PDF"
+        PATH + "/invoices/" + document.number + ".PDF"
       );
     })
   );
@@ -118,9 +122,8 @@ async function saveInvoices(documents) {
  */
 async function getToken() {
   const body = {
-    client_id: "7f0810d6-066f-4ffe-9a38-8ec81a8c99ae",
-    client_secret:
-      "4ecf06be6780552c09462bb4091d502a5684c9742e40cd56a6c9da62d9d7971e",
+    client_id: process.env.SELLSY_CLIENT_ID,
+    client_secret: process.env.SELLSY_CLIENT_SECRET,
     grant_type: "client_credentials",
   };
   const response = await fetch(LOGIN_URL + "/oauth2/access-tokens", {
