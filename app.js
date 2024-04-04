@@ -133,15 +133,13 @@ async function clearOldBackups() {
  * Method to parse all invoices returned and save them one by one as PDF file
  */
 async function saveInvoices(documents) {
-  await Promise.all(
-    documents.map(async (document) => {
-      console.log("downloading: " + document.pdf_link);
-      await downloadFile(
-        document.pdf_link,
-        formatPath(PATH, "/invoices/" + document.number + ".PDF")
-      );
-    })
-  );
+  for (let document of documents) {
+    console.log("downloading: " + document.pdf_link);
+    await downloadFile(
+      document.pdf_link,
+      formatPath(PATH, "/invoices/" + document.number + ".PDF")
+    );
+  }
 }
 
 /**
@@ -206,7 +204,7 @@ async function fetchAll(url, token, data = [], offset = 0, limit = 100) {
  * @returns {Promise<void>}
  */
 async function downloadFile(url, targetFile) {
-  return await new Promise((resolve, reject) => {
+  return await new Promise(async (resolve, reject) => {
     Https.get(url, (response) => {
       const code = response.statusCode ?? 0;
 
